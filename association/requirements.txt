@@ -1,0 +1,4 @@
+numpy>=1.26.4
+scipy>=1.17.1
+filterpy>=1.4.5
+geopy>=2.4.1

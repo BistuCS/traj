@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>轨迹关联动画演示</title>
+  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+</head>
+
+<body>
+  <div class="app">
+    <header class="toolbar">
+      <div class="left">
+        <h1>轨迹关联动画</h1>
+        <p>按时间顺序快速显现点，再形成关联轨迹</p>
+      </div>
+      <div class="right controls">
+        <button id="playPauseBtn">播放</button>
+        <button id="resetBtn">重置</button>
+        <button id="togglePredictBtn">隐藏预测</button>
+        <label>
+          速度
+          <select id="speedSelect">
+            <option value="1">1x</option>
+            <option value="2" selected>2x</option>
+            <option value="5">5x</option>
+            <option value="10">10x</option>
+            <option value="20">20x</option>
+          </select>
+        </label>
+        <label>
+          关联延迟
+          <input id="assocDelayRange" type="range" min="80" max="1000" step="20" value="240" />
+          <span id="assocDelayText">240ms</span>
+        </label>
+        <label class="file-label">
+          导入CSV
+          <input id="fileInput" type="file" accept=".csv,text/csv" />
+        </label>
+      </div>
+    </header>
+
+    <main class="main">
+      <section class="canvas-wrap">
+        <div id="map"></div>
+        <canvas id="trajCanvas"></canvas>
+        <div id="hoverTrajTag" class="hover-traj-tag"></div>
+        <div class="hud">
+          <div>当前时间：<span id="timeText">--</span></div>
+          <div>已显示点：<span id="pointCountText">0</span></div>
+          <div>已关联轨迹数：<span id="trajCountText">0</span></div>
+        </div>
+      </section>
+
+      <aside class="panel">
+        <h2>说明</h2>
+        <ol>
+          <li>默认读取 <code>../data/output/1_associated.csv</code> 与 <code>../data/input/predict_result.csv</code>。</li>
+          <li>可通过“隐藏预测/显示预测”控制预测段可见性。</li>
+          <li>可按轨迹ID查询并选中，地图仅显示当前ID。</li>
+        </ol>
+        <section class="preview">
+          <h3>轨迹筛选</h3>
+          <div class="query-row">
+            <input id="trajSearchInput" type="text" placeholder="输入轨迹ID关键字" />
+            <button id="clearFilterBtn">显示全部</button>
+          </div>
+          <p id="pointsPreviewMeta" class="preview-meta">--</p>
+          <div id="trajList" class="traj-list"></div>
+          <div class="pager">
+            <button id="prevPageBtn">上一页</button>
+            <span id="pageInfoText">1 / 1</span>
+            <button id="nextPageBtn">下一页</button>
+          </div>
+        </section>
+        <p id="statusText" class="status">等待加载数据…</p>
+      </aside>
+    </main>
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <script src="app.js"></script>
+</body>
+
+</html>
