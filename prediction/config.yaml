@@ -1,0 +1,47 @@
+csv:
+  default_encoding: "utf-8"
+  delimiter: ","
+  header_row: 0
+
+fixed_fields:
+  required: ["ts", "id", "x", "y", "z"]
+
+type_rules:
+  ts: "datetime"
+  id: "auto"
+  x: "float"
+  y: "float"
+  z: "float"
+
+error:
+  skip_invalid_row: true
+  default_value: null
+
+# 数据预处理
+preprocess:
+  x_range: [-180.0, 180.0]
+  y_range: [-90.0, 90.0]
+  z_range: [-1000.0, 10000.0]
+
+# 预测配置
+predict:
+  predict_steps: 15  # 预测未来15个点
+  # 卡尔曼参数
+  kalman:
+    process_noise: 0.01
+    measure_noise: 0.1
+  # PyTorch LSTM 配置
+  lstm:
+    look_back: 5
+    epochs: 30
+    batch_size: 2
+    units: 32
+    lr: 0.001
+    model_save_dir: "./models"  # ④ 模型保存目录
+  # 混合预测权重（卡尔曼*0.3 + LSTM*0.7，可调整）
+  hybrid:
+    kalman_weight: 0.3
+    lstm_weight: 0.7
+  # ② 预测结果导出配置
+  output:
+    result_csv_path: "data/predict_result.csv"  # 导出路径
