@@ -26,7 +26,11 @@ env.bak/
 venv.bak/
 
 # ===== PyTorch / 模型文件 =====
-prediction/models/
+prediction/models/*.pt
+prediction/models/*.pth
+prediction/models/*.ckpt
+prediction/models/*.pkl
+prediction/models/*.bin
 *.pt
 *.pth
 *.ckpt
@@ -34,8 +38,6 @@ prediction/models/
 *.bin
 
 # ===== 数据文件 =====
-data/
-uploads/
 *.csv
 *.json
 *.xlsx
@@ -45,6 +47,9 @@ uploads/
 *.hdf5
 *.npy
 *.npz
+association/data/
+prediction/data/
+prediction/uploads/
 
 # ===== IDE =====
 .idea/
