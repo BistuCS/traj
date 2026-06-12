@@ -57,7 +57,6 @@ $("#run").onclick = async () => {
 
     history = j.history;
     predicts = j.predict;
-    assocs = j.assoc;
 
     $("#info").textContent = `目标数：${Object.keys(history).length} 预测点：${predicts.length}`;
     $("#play").disabled = false;
@@ -95,17 +94,6 @@ function drawAll(){
             fillOpacity: 1
         }).addTo(map)
           .bindTooltip(`【预测】ID: ${p.id}<br/>X: ${p.lng.toFixed(6)}<br/>Y: ${p.lat.toFixed(6)}<br/>Z: ${p.z.toFixed(3)}`);
-    });
-
-    // ==================== 关联轨迹点 ====================
-    assocs.forEach(p => {
-        L.circleMarker([p.lat, p.lng], {
-            radius: 4,
-            color: '#33ff99',
-            fillColor: '#33ff99',
-            fillOpacity: 1
-        }).addTo(map)
-          .bindTooltip(`【关联】轨迹ID: ${p.tra_id}<br/>X: ${p.lng.toFixed(6)}<br/>Y: ${p.lat.toFixed(6)}<br/>Z: ${p.z.toFixed(3)}`);
     });
 }
 

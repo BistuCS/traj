@@ -5,6 +5,7 @@ import torch.optim as optim
 from collections import defaultdict
 from typing import List, Dict, Any, Union
 from data_receiver import RadarData
+from filter import Filter
 from datetime import datetime, timedelta
 from sklearn.preprocessing import MinMaxScaler
 import os
@@ -61,99 +62,72 @@ class TrajectoryPredictor:
             grouped[tid].sort(key=lambda x: x.ts)
         return grouped
 
-    # ---------------------- 1. 卡尔曼滤波预测 ----------------------
-    def _kalman_predict_multi(self, x_list, y_list, z_list, steps):
-        """多步卡尔曼预测"""
-        n = len(x_list)
-        x_est, y_est, z_est = np.zeros(n), np.zeros(n), np.zeros(n)
-        x_est[0], y_est[0], z_est[0] = x_list[0], y_list[0], z_list[0]
-        p = 1.0
-        for k in range(1, n):
-            p_predict = p + self.q
-            k_gain = p_predict / (p_predict + self.r)
-            x_est[k] = x_est[k - 1] + k_gain * (x_list[k] - x_est[k - 1])
-            y_est[k] = y_est[k - 1] + k_gain * (y_list[k] - y_est[k - 1])
-            z_est[k] = z_est[k - 1] + k_gain * (z_list[k] - z_est[k - 1])
-            p = (1 - k_gain) * p_predict
-        
-        # 多步递推预测
-        x_preds, y_preds, z_preds = [], [], []
-        last_x, last_y, last_z = x_est[-1], y_est[-1], z_est[-1]
-        prev_x, prev_y, prev_z = x_est[-2], y_est[-2], z_est[-2]
-        
-        for i in range(steps):
-            # 基于速度外推
-            vx = last_x - prev_x
-            vy = last_y - prev_y
-            vz = last_z - prev_z
-            
-            next_x = last_x + vx
-            next_y = last_y + vy
-            next_z = last_z + vz
-            
-            x_preds.append(next_x)
-            y_preds.append(next_y)
-            z_preds.append(next_z)
-            
-            # 更新状态
-            prev_x, prev_y, prev_z = last_x, last_y, last_z
-            last_x, last_y, last_z = next_x, next_y, next_z
-        
-        return x_preds, y_preds, z_preds
-
+    # ---------------------- 1. 卡尔曼滤波预测（基于 filter.py 的 Filter 类）---------------------
     def predict_kalman(self, grouped_data):
+        """使用 Filter 类进行卡尔曼滤波预测"""
         results = {}
         for tid, data_list in grouped_data.items():
             if len(data_list) < 2:
                 continue
-            xs = np.array([d.x for d in data_list])
-            ys = np.array([d.y for d in data_list])
-            zs = np.array([d.z for d in data_list])
-            
-            # 多步预测
-            x_preds, y_preds, z_preds = self._kalman_predict_multi(xs, ys, zs, self.predict_steps)
-            
-            last_ts = data_list[-1].ts
+
+            # 用第一个位置初始化滤波器
+            first_pos = [data_list[0].x, data_list[0].y, data_list[0].z]
+            kf = Filter(first_pos)
+
+            # 用历史数据更新滤波器（predict + update 循环）
+            for i in range(1, len(data_list)):
+                try:
+                    dt = (data_list[i].ts - data_list[i-1].ts).total_seconds()
+                    if pd.isna(dt) or dt <= 0:
+                        dt = 1.0
+                except:
+                    dt = 1.0
+
+                pos = [data_list[i].x, data_list[i].y, data_list[i].z]
+                kf.predict(dt)
+                kf.update(pos)
+
+            # 计算最后的时间间隔用于外推
             try:
                 dt = (data_list[-1].ts - data_list[-2].ts).total_seconds()
                 if pd.isna(dt) or dt <= 0:
                     dt = 1.0
             except:
                 dt = 1.0
-            
-            # 生成多个预测点
+
+            last_ts = data_list[-1].ts
+
+            # 多步预测
             predictions = []
             for i in range(self.predict_steps):
+                kf.predict(dt)
+                pos = kf.now_pos()
+
                 if pd.isna(last_ts):
                     pred_ts = datetime(2000, 1, 1, 0, 0, 0)
                     pred_ts_str = "00:00.0"
                 else:
-                    # 安全地计算时间增量，避免任何溢出
-                    # 直接提取分秒部分进行计算，不依赖pandas Timestamp运算
                     try:
-                        # 尝试正常计算
                         total_seconds_offset = dt * (i + 1)
                         pred_ts = last_ts + timedelta(seconds=total_seconds_offset)
                     except (OverflowError, OSError, pd.errors.OutOfBoundsDatetime, pd.errors.OutOfBoundsTimedelta):
-                        # 如果溢出，只使用最后时间的分秒部分手动计算
                         base_total_seconds = last_ts.minute * 60 + last_ts.second + last_ts.microsecond / 1000000.0
                         new_total_seconds = base_total_seconds + dt * (i + 1)
                         minutes = int(new_total_seconds // 60) % 60
                         seconds = new_total_seconds % 60
                         pred_ts = datetime(2000, 1, 1, 0, minutes, int(seconds), int((seconds % 1) * 1000000))
-                    
-                    # 格式化时间为 MM:SS.m 格式（与原CSV保持一致）
-                    pred_ts_str = pred_ts.strftime("%M:%S.%f")[:-5]  # 保留1位毫秒
-                
+
+                    pred_ts_str = pred_ts.strftime("%M:%S.%f")[:-5]
+
                 predictions.append({
                     "predict_ts": pred_ts,
                     "predict_ts_str": pred_ts_str,
-                    "x": round(x_preds[i], 6),
-                    "y": round(y_preds[i], 6),
-                    "z": round(z_preds[i], 6),
+                    "x": round(pos[0], 6),
+                    "y": round(pos[1], 6),
+                    "z": round(pos[2], 6),
                     "step": i + 1
                 })
-            
+
             results[tid] = {
                 "predictions": predictions,
                 "history_count": len(data_list)
@@ -165,7 +139,13 @@ class TrajectoryPredictor:
         X, y = [], []
         for i in range(self.look_back, len(data)):
             X.append(data[i - self.look_back:i])
-            y.append(data[i])
+            # y 需要是未来 predict_steps 个点，如果数据不够就用最后一个点重复
+            future_points = data[i:min(i + self.predict_steps, len(data))]
+            if len(future_points) < self.predict_steps:
+                # 数据不够时，用最后一个点填充
+                padding = [future_points[-1]] * (self.predict_steps - len(future_points))
+                future_points = list(future_points) + padding
+            y.append(future_points)
         return np.array(X), np.array(y)
 
     def _save_model(self, model, scaler, target_id):

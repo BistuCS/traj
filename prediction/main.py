@@ -1,22 +1,16 @@
 import sys
 from pathlib import Path
 
-# 添加 association 目录到 Python 路径
-association_path = Path(__file__).parent / "association"
-sys.path.insert(0, str(association_path))
-
-
-
 from data_receiver import AdaptiveDataReceiver
 from data_preprocessor import DataPreprocessor
 from predictor import TrajectoryPredictor
-from traj_association_module import associate_trajectories
+
 
 if __name__ == "__main__":
     # ============== 1. 读取 + 预处理数据 ==============
     receiver = AdaptiveDataReceiver()
     # 替换为你的CSV文件路径
-    raw_data = receiver.load_csv("data/1.csv")
+    raw_data = receiver.load_csv("data/data_611.csv")
 
     preprocessor = DataPreprocessor(receiver.config)
     clean_data = preprocessor.process(raw_data)
@@ -59,15 +53,7 @@ if __name__ == "__main__":
     developer_interface_data = predictor.convert_to_develop_interface(predict_result)
     print("\n🤝 成功生成【开发对接数据】，格式完全符合接口要求！")
 
-    #  🔥 调用关联（核心步骤）
-    # ==========================================
-    associated_result = associate_trajectories(
-        data=developer_interface_data,
-        ds_id=1,
-        pos_dim=3
-    )
-
     # 5. 输出结果
-    print("\n关联完成！输出如下：")
-    for traj_id, points in associated_result.items():
-        print(f"轨迹 {traj_id}: {len(points)} 点")
+    print(f"\n✅ 程序执行完成！共预测 {len(predict_result)} 个目标轨迹")
+    for tid, res in predict_result.items():
+        print(f"   轨迹 {tid}: {res['history_count']} 个历史点 → {len(res['predictions'])} 个预测点")

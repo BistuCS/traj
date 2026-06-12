@@ -1,8 +1,5 @@
 import sys
 from pathlib import Path
-# 添加 association 目录到 Python 路径
-association_path = Path(__file__).parent / "association"
-sys.path.insert(0, str(association_path))
 from flask import Flask, request, jsonify, send_file, render_template_string
 import pandas as pd
 import os
@@ -11,7 +8,6 @@ from datetime import datetime
 from data_receiver import AdaptiveDataReceiver
 from data_preprocessor import DataPreprocessor
 from predictor import TrajectoryPredictor
-from traj_association_module import associate_trajectories
 
 app = Flask(__name__)
 os.makedirs("uploads", exist_ok=True)
@@ -42,9 +38,8 @@ def run():
         grouped = pred.group_by_id(clean)
         pred_res = pred.predict_hybrid(grouped)
 
-        # 4. 关联
+        # 4. 结果整理
         dev_data = pred.convert_to_develop_interface(pred_res)
-        assoc = associate_trajectories(data=dev_data, ds_id=1, pos_dim=3)
 
         # ======================
         # 输出地图格式数据
@@ -84,22 +79,10 @@ def run():
                     "z": pred["z"]
                 })
 
-        assoc_data = []
-        for tra_id, pts in assoc.items():
-            for p in pts:
-                assoc_data.append({
-                    "tra_id": tra_id,
-                    "ts": p["ts"],
-                    "lng": p["x"],
-                    "lat": p["y"],
-                    "z": p["z"]
-                })
-
         return jsonify({
             "ok": True,
             "history": history_by_id,
-            "predict": predict_data,
-            "assoc": assoc_data
+            "predict": predict_data
         })
 
     except Exception as e:

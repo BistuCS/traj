@@ -130,6 +130,15 @@ class AdaptiveDataReceiver:
             header=self.csv_conf["header_row"]
         )
 
+        # 应用字段映射（将CSV列名映射到标准字段名）
+        field_mapping = self.config["fixed_fields"].get("mapping", {})
+        if field_mapping:
+            # 仅映射CSV中存在的列
+            actual_mapping = {csv_col: std_col for std_col, csv_col in field_mapping.items() if csv_col in df.columns}
+            if actual_mapping:
+                df = df.rename(columns=actual_mapping)
+                print(f"🔄 字段映射已应用：{actual_mapping}")
+
         # 自动识别动态辅助字段
         all_columns = df.columns.tolist()
         aux_columns = [col for col in all_columns if col not in self.required_fields]
@@ -155,7 +164,7 @@ class AdaptiveDataReceiver:
 if __name__ == "__main__":
     receiver = AdaptiveDataReceiver()
     # 替换成你的CSV文件路径！
-    data = receiver.load_csv("1.csv")
+    data = receiver.load_csv("data/data_611.csv")
     if data:
         print("\n🔍 第一条数据预览：")
         print(data[0])

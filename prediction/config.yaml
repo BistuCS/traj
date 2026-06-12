@@ -5,6 +5,13 @@ csv:
 
 fixed_fields:
   required: ["ts", "id", "x", "y", "z"]
+  # 字段映射：将CSV中的列名映射到标准字段名
+  # 格式：标准字段名: CSV中的列名
+  mapping:
+    id: "uuid"
+    x: "tarlon"
+    y: "tarlat"
+    z: "tarheight"
 
 type_rules:
   ts: "datetime"
